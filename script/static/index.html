@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FlightSim — Prediksi Harga Tiket Pesawat</title>
+  <meta name="description" content="Simulasi prediksi harga tiket pesawat menggunakan model Machine Learning Random Forest berdasarkan data Traveloka Mei 2026." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════ HERO ══════════════════════════════════════════ -->
+<div class="hero-bg">
+  <div class="hero-particles" id="particles"></div>
+  <header class="hero-content">
+    <div class="logo">
+      <span class="logo-text">FlightSim</span>
+    </div>
+    <h1 class="hero-title">Prediksi Harga<br /><span class="gradient-text">Tiket Pesawat</span></h1>
+    <p class="hero-subtitle">
+      Website prediksi harga tiket pesawat berbasis model <strong>Random Forest</strong> yang dilatih dari
+      data harga tiket rute penerbangan populer Traveloka 21 - 28 Mei 2026.
+    </p>
+  </header>
+</div>
+
+<!-- ══════════════════════════════════════════ SEARCH FORM ════════════════════════════════════ -->
+<main class="main-wrap">
+  <section class="search-card">
+    <div class="search-card-tabs">
+      <button class="search-tab active" id="btn-mode-basic">Basic Search</button>
+      <button class="search-tab" id="btn-mode-advanced">Advanced Search</button>
+    </div>
+    <div class="search-card-body">
+      <div class="search-card-header">
+        <h2>Cari Penerbangan</h2>
+        <p class="search-subtitle">Isi parameter di bawah untuk mendapatkan estimasi harga tiket.</p>
+      </div>
+
+      <!-- ── Route Row ── -->
+      <div class="form-row form-row-route">
+        <div class="form-group" id="grp-origin">
+          <label for="sel-origin">
+            Bandara Asal
+          </label>
+          <div class="select-wrap">
+            <select id="sel-origin">
+              <option value="">Memuat...</option>
+            </select>
+            <span class="select-arrow">›</span>
+          </div>
+        </div>
+
+        <button class="swap-btn" id="btn-swap" title="Tukar asal & tujuan">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"/>
+          </svg>
+        </button>
+
+        <div class="form-group" id="grp-dest">
+          <label for="sel-dest">
+            Bandara Tujuan
+          </label>
+          <div class="select-wrap">
+            <select id="sel-dest" disabled>
+              <option value="">Pilih asal dulu</option>
+            </select>
+            <span class="select-arrow">›</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Date Row ── -->
+      <div class="form-row">
+        <div class="form-group">
+          <label for="inp-date-go">
+            Tanggal Berangkat
+          </label>
+          <input type="date" id="inp-date-go" />
+        </div>
+
+        <div class="form-group">
+          <label for="inp-date-ret" class="label-optional">
+            Tanggal Pulang
+            <span class="badge-optional">Opsional</span>
+          </label>
+          <input type="date" id="inp-date-ret" />
+        </div>
+      </div>
+
+      <!-- ── Options Row ── -->
+      <div class="form-row form-row-options">
+        <div class="form-group">
+          <label for="sel-airline">
+            Maskapai
+          </label>
+          <div class="select-wrap">
+            <select id="sel-airline" disabled>
+              <option value="">Pilih rute dulu</option>
+            </select>
+            <span class="select-arrow">›</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="sel-class">
+            Kelas
+          </label>
+          <div class="select-wrap">
+            <select id="sel-class" disabled>
+              <option value="">Pilih maskapai dulu</option>
+            </select>
+            <span class="select-arrow">›</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>
+            Transit
+          </label>
+          <div class="toggle-group" role="group" id="grp-transit">
+            <button class="toggle-btn active" data-value="" id="t-all">Semua</button>
+            <button class="toggle-btn" data-value="0" id="t-direct">Langsung</button>
+            <button class="toggle-btn" data-value="1" id="t-transit">Transit</button>
+          </div>
+        </div>
+
+        <div class="form-group" id="grp-basic-n">
+          <label for="inp-n">
+            Jumlah Hasil
+          </label>
+          <div class="number-spin">
+            <button class="spin-btn" id="btn-n-dec">−</button>
+            <span id="disp-n">5</span>
+            <button class="spin-btn" id="btn-n-inc">+</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Advanced Row (Hidden by default) ── -->
+      <div class="advanced-grid" id="advanced-form" style="display:none;">
+        <div class="advanced-section-title">Fasilitas Simulator (Advanced)</div>
+        
+        <!-- Waktu Berangkat -->
+        <div class="form-group">
+          <label>Waktu Berangkat</label>
+          <div class="select-wrap">
+            <select id="adv-waktu-berangkat">
+              <option value="MORNING">Pagi (06:00 - 11:59)</option>
+              <option value="AFTERNOON">Siang (12:00 - 17:59)</option>
+              <option value="EVENING">Sore (18:00 - 23:59)</option>
+              <option value="NIGHT">Malam (00:00 - 05:59)</option>
+            </select>
+            <span class="select-arrow">›</span>
+          </div>
+        </div>
+
+        <!-- Jumlah Transit -->
+        <div class="form-group">
+          <label>Jumlah Transit</label>
+          <div class="select-wrap">
+            <select id="adv-transit">
+              <option value="0">0 (Langsung)</option>
+              <option value="1">1 Transit</option>
+              <option value="2">2 Transit</option>
+            </select>
+            <span class="select-arrow">›</span>
+          </div>
+        </div>
+
+        <!-- Durasi Penerbangan -->
+        <div class="form-group">
+          <label>Durasi Terbang (Menit)</label>
+          <input type="number" id="adv-durasi" min="1" placeholder="Auto" />
+        </div>
+
+        <!-- Model Pesawat -->
+        <div class="form-group">
+          <label>Model Pesawat</label>
+          <div class="select-wrap">
+            <select id="adv-model-pesawat">
+              <option value="Boeing 737">Boeing 737</option>
+              <option value="Boeing 777">Boeing 777</option>
+              <option value="Boeing 787">Boeing 787</option>
+              <option value="Airbus A320">Airbus A320</option>
+              <option value="Airbus A330">Airbus A330</option>
+              <option value="Airbus A350">Airbus A350</option>
+              <option value="Bombardier CR1000">Bombardier CR1000</option>
+              <option value="Embraer E195">Embraer E195</option>
+              <option value="Unknown">Lainnya</option>
+            </select>
+            <span class="select-arrow">›</span>
+          </div>
+        </div>
+
+        <!-- Tipe Kursi -->
+        <div class="form-group">
+          <label>Tipe Kursi (Seat Type)</label>
+          <div class="select-wrap">
+            <select id="adv-seat-type">
+              <option value="BELOW_AVERAGE_LEGROOM">Below Avg Legroom</option>
+              <option value="STANDARD_LEGROOM" selected>Standard Legroom</option>
+              <option value="RECLINER_SEAT">Recliner Seat</option>
+              <option value="CRADLE_RECLINER">Cradle Recliner</option>
+              <option value="ANGLE_FLAT_SEAT">Angle Flat Seat</option>
+              <option value="FULL_FLAT_SEAT">Full Flat Seat</option>
+              <option value="FULL_FLAT_POD">Full Flat Pod</option>
+              <option value="PRIVATE_SUITE">Private Suite</option>
+            </select>
+            <span class="select-arrow">›</span>
+          </div>
+        </div>
+
+        <!-- Layout Kursi -->
+        <div class="form-group">
+          <label>Layout Kursi</label>
+          <div class="select-wrap">
+            <select id="adv-seat-layout">
+              <option value="3-3">3-3</option>
+              <option value="3-3-3">3-3-3</option>
+              <option value="3-4-3">3-4-3</option>
+              <option value="2-4-2">2-4-2</option>
+              <option value="2-3-2">2-3-2</option>
+              <option value="2-3">2-3</option>
+              <option value="2-2-2">2-2-2</option>
+              <option value="2-2">2-2</option>
+              <option value="1-2-2">1-2-2</option>
+              <option value="Unknown">Lainnya</option>
+            </select>
+            <span class="select-arrow">›</span>
+          </div>
+        </div>
+
+        <!-- Seat Pitch -->
+        <div class="form-group">
+          <label>Seat Pitch (inch)</label>
+          <div class="select-wrap">
+            <select id="adv-seat-pitch">
+              <option value="28">28"</option><option value="29">29"</option><option value="30" selected>30"</option>
+              <option value="31">31"</option><option value="32">32"</option><option value="33">33"</option>
+              <option value="34">34"</option><option value="35">35"</option><option value="38">38"</option>
+              <option value="40">40"</option><option value="60">60"</option><option value="82">82"</option>
+            </select>
+            <span class="select-arrow">›</span>
+          </div>
+        </div>
+
+        <!-- WiFi -->
+        <div class="form-group">
+          <label>WiFi</label>
+          <div class="select-wrap">
+            <select id="adv-wifi">
+              <option value="no_wifi">Tanpa WiFi</option>
+              <option value="paid">Berbayar</option>
+              <option value="free">Gratis</option>
+            </select>
+            <span class="select-arrow">›</span>
+          </div>
+        </div>
+
+        <!-- Bagasi -->
+        <div class="form-group">
+          <label>Bagasi (kg)</label>
+          <div class="select-wrap">
+            <select id="adv-bagasi">
+              <option value="0">0 kg</option><option value="10">10 kg</option><option value="15">15 kg</option>
+              <option value="20" selected>20 kg</option><option value="25">25 kg</option><option value="30">30 kg</option>
+              <option value="35">35 kg</option><option value="40">40 kg</option><option value="50">50 kg</option>
+            </select>
+            <span class="select-arrow">›</span>
+          </div>
+        </div>
+
+        <!-- Kabin -->
+        <div class="form-group">
+          <label>Kabin (kg)</label>
+          <div class="select-wrap">
+            <select id="adv-kabin">
+              <option value="0">0 kg</option><option value="7" selected>7 kg</option>
+              <option value="10">10 kg</option><option value="15">15 kg</option>
+            </select>
+            <span class="select-arrow">›</span>
+          </div>
+        </div>
+
+        <!-- Checkboxes -->
+        <div class="form-group advanced-checkboxes" style="grid-column: 1 / -1;">
+          <label class="cb-label"><input type="checkbox" id="adv-meal"> Meal</label>
+          <label class="cb-label"><input type="checkbox" id="adv-entertainment"> Entertainment</label>
+          <label class="cb-label"><input type="checkbox" id="adv-usb"> USB</label>
+          <label class="cb-label"><input type="checkbox" id="adv-power"> Power</label>
+          <label class="cb-label"><input type="checkbox" id="adv-refundable"> Refundable</label>
+          <label class="cb-label"><input type="checkbox" id="adv-reschedulable"> Reschedulable</label>
+          <label class="cb-label"><input type="checkbox" id="adv-visa"> Visa Required</label>
+        </div>
+      </div>
+
+      <div class="form-action">
+        <button class="btn-search" id="btn-search" disabled>
+          <span id="btn-search-text">Cari Tiket</span>
+        </button>
+      </div>
+    </div> <!-- end search-card-body -->
+  </section>
+
+  <!-- ══════════════════════════════ POPULAR DESTINATIONS ════════════════════════════════════ -->
+  <section class="popular-destinations" id="popular-destinations">
+    <div class="popular-header">
+      <h3>Destinasi Populer</h3>
+      <p>Pilihan terbaik untuk liburan Anda berikutnya</p>
+    </div>
+    <div class="dest-grid">
+      <div class="dest-card" data-code="DPS">
+        <img src="https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&w=500&q=80" alt="Bali">
+        <div class="dest-card-overlay">
+          <span class="dest-tag">Indonesia</span>
+          <span class="dest-title">Bali</span>
+        </div>
+      </div>
+      <div class="dest-card" data-code="SOQ">
+        <img src="https://images.unsplash.com/photo-1584824486509-112e4181f1ce?auto=format&fit=crop&w=500&q=80" alt="Raja Ampat">
+        <div class="dest-card-overlay">
+          <span class="dest-tag">Indonesia</span>
+          <span class="dest-title">Raja Ampat</span>
+        </div>
+      </div>
+      <div class="dest-card" data-code="YIA">
+        <img src="https://images.unsplash.com/photo-1588668214407-6ea9a6d8c272?auto=format&fit=crop&w=500&q=80" alt="Yogyakarta">
+        <div class="dest-card-overlay">
+          <span class="dest-tag">Indonesia</span>
+          <span class="dest-title">Yogyakarta</span>
+        </div>
+      </div>
+      <div class="dest-card" data-code="LBJ">
+        <img src="https://images.unsplash.com/photo-1625904835711-c2411dd7db38?auto=format&fit=crop&w=500&q=80" alt="Labuan Bajo">
+        <div class="dest-card-overlay">
+          <span class="dest-tag">Indonesia</span>
+          <span class="dest-title">Labuan Bajo</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════ RESULTS SECTION ════════════════════════════════════ -->
+  <section class="results-section" id="results-section" style="display:none">
+    <div class="results-layout">
+      <!-- Sidebar Filter -->
+      <aside class="sidebar-filter" id="sidebar-filter">
+        <div class="filter-group">
+          <h4 class="filter-title">Urutkan</h4>
+          <label class="filter-option"><input type="radio" name="sort" value="price" checked> Harga Terendah</label>
+          <label class="filter-option"><input type="radio" name="sort" value="duration"> Waktu Tercepat</label>
+        </div>
+        <div class="filter-group">
+          <h4 class="filter-title">Transit</h4>
+          <label class="filter-option"><input type="checkbox" class="cb-transit" value="direct" checked> Penerbangan Langsung</label>
+          <label class="filter-option"><input type="checkbox" class="cb-transit" value="transit" checked> 1 Transit atau lebih</label>
+        </div>
+      </aside>
+
+      <!-- Results List -->
+      <div class="results-list">
+        <!-- Loading State -->
+        <div class="loading-state" id="loading-state">
+          <div class="plane-loader">
+            <span class="loader-icon">Calculating</span>
+          </div>
+          <p>Menghitung prediksi harga tiket...</p>
+        </div>
+
+        <!-- Results Container -->
+        <div id="results-container"></div>
+      </div>
+    </div>
+  </section>
+  </section>
+</main>
+
+<footer class="footer">
+  <p>FlightSim · Website Prediksi Harga Tiket Pesawat · Data: Traveloka 21-28 Mei 2026</p>
+</footer>
+
+<!-- ══════════════════════════════ TICKET CARD TEMPLATE ════════════════════════════ -->
+<template id="tmpl-result-block">
+  <div class="result-block">
+    <div class="result-block-header">
+      <div class="result-block-route">
+        <span class="result-block-code" data-bind="origin"></span>
+        <svg class="route-arrow" viewBox="0 0 40 12" fill="none">
+          <path d="M0 6h36M30 1l5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="result-block-code" data-bind="dest"></span>
+      </div>
+      <div class="result-block-meta">
+        <span data-bind="date"></span>
+        <span class="dot">·</span>
+        <span data-bind="kelas"></span>
+        <span class="dot">·</span>
+        <span data-bind="n_found"></span>
+      </div>
+    </div>
+    <div class="warnings-wrap" data-bind="warnings"></div>
+    <div class="tickets-grid" data-bind="tickets"></div>
+  </div>
+</template>
+
+<template id="tmpl-ticket-card">
+  <article class="ticket-card">
+    <div class="ticket-header" style="justify-content: flex-end;">
+      <span class="ticket-class-badge" data-bind="kelas_label"></span>
+    </div>
+    <div class="ticket-main-row">
+      <div class="ticket-section-airline">
+        <div class="ticket-airline-logo">
+          <div class="airline-icon-placeholder" data-bind="airline_icon"></div>
+          <span class="ticket-airline-code" data-bind="maskapai"></span>
+        </div>
+        <span class="ticket-airline-name" data-bind="maskapai_nama"></span>
+      </div>
+
+      <div class="ticket-section-route">
+        <div class="ticket-time-block">
+          <span class="ticket-time" data-bind="jam_berangkat"></span>
+          <span class="ticket-airport" data-bind="bandara_asal"></span>
+          <span class="ticket-date-sm" data-bind="tgl_berangkat"></span>
+        </div>
+        
+        <div class="ticket-duration-block">
+          <span class="ticket-duration" data-bind="durasi"></span>
+          <div class="ticket-route-line">
+            <span class="route-dot"></span>
+            <span class="route-line"></span>
+            <span class="route-line"></span>
+            <span class="route-dot"></span>
+          </div>
+          <span class="ticket-transit-label" data-bind="transit_label"></span>
+        </div>
+        
+        <div class="ticket-time-block">
+          <span class="ticket-time" data-bind="jam_tiba"></span>
+          <span class="ticket-airport" data-bind="bandara_tujuan"></span>
+          <span class="ticket-date-sm" data-bind="tgl_tiba"></span>
+        </div>
+      </div>
+
+      <div class="ticket-section-price">
+        <div class="price-container">
+          <span class="ticket-price-note">Mulai dari</span>
+          <div class="ticket-price" data-bind="harga"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="ticket-footer">
+      <div class="footer-grid">
+        <div class="footer-group">
+          <span class="group-title">Pesawat & Bagasi</span>
+          <div class="group-items">
+            <span class="group-item" data-bind="model_pesawat"></span>
+            <span class="group-item" data-bind="bagasi_text"></span>
+          </div>
+        </div>
+        
+        <div class="footer-group">
+          <span class="group-title">Fasilitas</span>
+          <div class="group-items fac-icons" data-bind="fac_icons"></div>
+        </div>
+        
+        <div class="footer-group">
+          <span class="group-title">Kursi</span>
+          <div class="group-items" data-bind="seat_features"></div>
+        </div>
+
+        <div class="footer-group">
+          <span class="group-title">Kebijakan & Info</span>
+          <div class="group-items" data-bind="extra_features"></div>
+        </div>
+      </div>
+    </div>
+  </article>
+</template>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
